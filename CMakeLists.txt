@@ -60,6 +60,15 @@ elseif(target MATCHES "darwin")
       "-lsqlite3"
       "-lresolv"
   )
+elseif(target MATCHES "android")
+  target_link_libraries(
+    ${rgb_lib_bare}
+    PRIVATE
+      "-llog"
+      "-lz"
+      "-ldl"
+      "-lm"
+  )
 elseif(target MATCHES "linux")
   target_link_libraries(
     ${rgb_lib_bare}

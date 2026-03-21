@@ -18,6 +18,7 @@ ASSETS=(
   "utexo__rgb-lib-bare-ios-arm64.bare:prebuilds/ios-arm64/utexo__rgb-lib-bare.bare"
   "utexo__rgb-lib-bare-ios-arm64-simulator.bare:prebuilds/ios-arm64-simulator/utexo__rgb-lib-bare.bare"
   "utexo__rgb-lib-bare-darwin-arm64.bare:prebuilds/darwin-arm64/utexo__rgb-lib-bare.bare"
+  "librgblibcffi-android-arm64.a:lib/android-arm64/librgblibcffi.a"
 )
 
 cd "$PKG_DIR"
