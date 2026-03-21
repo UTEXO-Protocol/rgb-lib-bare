@@ -2,11 +2,30 @@
 set -euo pipefail
 
 # Build librgblibcffi.a for all iOS targets + host
-# Run from packages/rgb-lib-bare/
+#
+# IMPORTANT: Uses `cargo rustc --crate-type staticlib` instead of `cargo build`
+# because Cargo.toml defines crate-type = ["staticlib", "cdylib"] and the cdylib
+# linker step fails on iOS due to missing ___chkstk_darwin symbol from aws-lc-sys.
+# Building only the staticlib avoids the linker entirely.
+#
+# Prerequisites:
+#   - Rust toolchain with targets: rustup target add aarch64-apple-ios aarch64-apple-ios-sim
+#   - Xcode with iOS SDK
+#   - rgb-lib-nodejs repo cloned at ../../rgb-lib-nodejs (or set CFFI_DIR env var)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PKG_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-CFFI_DIR="$(cd "$PKG_DIR/../../rgb-lib-nodejs/rgb-lib/bindings/c-ffi" && pwd)"
+
+# Allow overriding the C-FFI source directory
+if [ -z "${CFFI_DIR:-}" ]; then
+  CFFI_DIR="$(cd "$PKG_DIR/../../rgb-lib-nodejs/rgb-lib/bindings/c-ffi" 2>/dev/null && pwd)" || {
+    echo "ERROR: rgb-lib-nodejs not found at ../../rgb-lib-nodejs"
+    echo "  Either clone it there or set CFFI_DIR env var:"
+    echo "  CFFI_DIR=/path/to/rgb-lib-nodejs/rgb-lib/bindings/c-ffi bash $0"
+    exit 1
+  }
+fi
+
 OUT_DIR="$PKG_DIR/lib"
 
 echo "=== Building rgb-lib C FFI static libraries ==="
@@ -25,7 +44,7 @@ TARGETS=(
 echo ""
 echo "--- Building for host (darwin-arm64) ---"
 cd "$CFFI_DIR"
-cargo build --release $FEATURES 2>&1 | tail -3
+cargo rustc --release $FEATURES --crate-type staticlib 2>&1 | tail -3
 mkdir -p "$OUT_DIR/darwin-arm64"
 cp target/release/librgblibcffi.a "$OUT_DIR/darwin-arm64/"
 echo "✅ darwin-arm64: $(ls -lh "$OUT_DIR/darwin-arm64/librgblibcffi.a" | awk '{print $5}')"
@@ -52,7 +71,7 @@ for entry in "${TARGETS[@]}"; do
   export SDKROOT="$SDK_PATH"
 
   cd "$CFFI_DIR"
-  cargo build --release --target "$RUST_TARGET" $FEATURES 2>&1 | tail -3
+  cargo rustc --release --target "$RUST_TARGET" $FEATURES --crate-type staticlib 2>&1 | tail -3
 
   mkdir -p "$OUT_DIR/$DIR_NAME"
   cp "target/$RUST_TARGET/release/librgblibcffi.a" "$OUT_DIR/$DIR_NAME/"
