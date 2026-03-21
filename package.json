@@ -1,0 +1,28 @@
+{
+  "name": "@utexo/rgb-lib-bare",
+  "version": "0.3.0-beta.13",
+  "description": "Bare native addon wrapping rgb-lib C FFI for use in bare worklets",
+  "main": "index.js",
+  "addon": true,
+  "files": [
+    "binding.js",
+    "binding.cc",
+    "rgblib.h",
+    "CMakeLists.txt",
+    "index.js",
+    "prebuilds/",
+    "lib/"
+  ],
+  "scripts": {
+    "postinstall": "bash scripts/download-libs.sh",
+    "build": "cmake-bare-rebuild",
+    "build-ios": "bash scripts/build-ios.sh"
+  },
+  "dependencies": {
+    "require-addon": "^1.2.0"
+  },
+  "devDependencies": {
+    "cmake-bare": "^1.7.6",
+    "cmake-npm": "^1.1.0"
+  }
+}

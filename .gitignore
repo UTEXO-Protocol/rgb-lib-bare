@@ -1,0 +1,12 @@
+node_modules/
+
+# CMake build directories
+build/
+build-*/
+
+# Binary artifacts — downloaded from GitHub Releases via postinstall
+lib/
+prebuilds/
+
+# Lock file (contains absolute paths)
+package-lock.json
