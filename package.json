@@ -11,7 +11,8 @@
     "CMakeLists.txt",
     "index.js",
     "prebuilds/",
-    "lib/"
+    "lib/",
+    "scripts/"
   ],
   "scripts": {
     "postinstall": "bash scripts/download-libs.sh",
