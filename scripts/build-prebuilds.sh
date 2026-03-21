@@ -18,7 +18,7 @@ PKG_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PKG_DIR"
 
 # Verify static libs exist
-for target in ios-arm64 ios-arm64-simulator darwin-arm64; do
+for target in ios-arm64 ios-arm64-simulator ios-x64-simulator darwin-arm64; do
   if [ ! -f "lib/$target/librgblibcffi.a" ]; then
     echo "ERROR: lib/$target/librgblibcffi.a not found"
     echo "  Run: bash scripts/build-ios.sh  OR  bash scripts/download-libs.sh"
@@ -32,6 +32,7 @@ echo "=== Building bare addon prebuilds ==="
 TARGETS=(
   "ios-arm64:iOS:arm64:iphoneos"
   "ios-arm64-simulator:iOS:arm64:iphonesimulator"
+  "ios-x64-simulator:iOS:x86_64:iphonesimulator"
   "darwin-arm64::arm64:"
 )
 

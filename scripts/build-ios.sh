@@ -155,6 +155,7 @@ if [ "$MODE" = "ios" ] || [ "$MODE" = "all" ]; then
 
   build_target "aarch64-apple-ios" "ios-arm64" "export SDKROOT='$IOS_SDK'"
   build_target "aarch64-apple-ios-sim" "ios-arm64-simulator" "export SDKROOT='$IOS_SIM_SDK'"
+  build_target "x86_64-apple-ios" "ios-x64-simulator" "export SDKROOT='$IOS_SIM_SDK'"
 fi
 
 # ── Build Android targets ─────────────────────────────────────────────────

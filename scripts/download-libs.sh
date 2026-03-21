@@ -17,7 +17,9 @@ ASSETS=(
   "librgblibcffi-darwin-arm64.a:lib/darwin-arm64/librgblibcffi.a"
   "utexo__rgb-lib-bare-ios-arm64.bare:prebuilds/ios-arm64/utexo__rgb-lib-bare.bare"
   "utexo__rgb-lib-bare-ios-arm64-simulator.bare:prebuilds/ios-arm64-simulator/utexo__rgb-lib-bare.bare"
+  "utexo__rgb-lib-bare-ios-x64-simulator.bare:prebuilds/ios-x64-simulator/utexo__rgb-lib-bare.bare"
   "utexo__rgb-lib-bare-darwin-arm64.bare:prebuilds/darwin-arm64/utexo__rgb-lib-bare.bare"
+  "librgblibcffi-ios-x64-simulator.a:lib/ios-x64-simulator/librgblibcffi.a"
   "librgblibcffi-android-arm64.a:lib/android-arm64/librgblibcffi.a"
 )
 
