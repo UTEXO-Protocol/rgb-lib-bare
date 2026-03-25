@@ -17,7 +17,7 @@ PKG_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cd "$PKG_DIR"
 
-# Verify static libs exist
+# Verify static libs exist (iOS + darwin)
 for target in ios-arm64 ios-arm64-simulator ios-x64-simulator darwin-arm64; do
   if [ ! -f "lib/$target/librgblibcffi.a" ]; then
     echo "ERROR: lib/$target/librgblibcffi.a not found"
@@ -26,19 +26,24 @@ for target in ios-arm64 ios-arm64-simulator ios-x64-simulator darwin-arm64; do
   fi
 done
 
+# Check Android libs (warn, don't fail — allows iOS-only builds)
+ANDROID_TARGETS=("android-arm64" "android-arm" "android-x64" "android-ia32")
+HAVE_ANDROID=true
+for target in "${ANDROID_TARGETS[@]}"; do
+  if [ ! -f "lib/$target/librgblibcffi.a" ]; then
+    echo "WARN: lib/$target/librgblibcffi.a not found — skipping Android prebuilds for $target"
+    HAVE_ANDROID=false
+  fi
+done
+
 echo "=== Building bare addon prebuilds ==="
 
-# Target configs: name:CMAKE_SYSTEM_NAME:CMAKE_OSX_ARCHITECTURES:CMAKE_OSX_SYSROOT
-TARGETS=(
-  "ios-arm64:iOS:arm64:iphoneos"
-  "ios-arm64-simulator:iOS:arm64:iphonesimulator"
-  "ios-x64-simulator:iOS:x86_64:iphonesimulator"
-  "darwin-arm64::arm64:"
-)
+ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-$HOME/Library/Android/sdk/ndk/27.1.12297006}"
+ANDROID_TOOLCHAIN="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake"
 
-for entry in "${TARGETS[@]}"; do
-  IFS=':' read -r TARGET_NAME SYS_NAME ARCH SYSROOT <<< "$entry"
-  BUILD_DIR="build-prebuild-$TARGET_NAME"
+build_target() {
+  local TARGET_NAME="$1"
+  local BUILD_DIR="build-prebuild-$TARGET_NAME"
 
   echo ""
   echo "--- Building prebuild for $TARGET_NAME ---"
@@ -47,18 +52,28 @@ for entry in "${TARGETS[@]}"; do
   mkdir -p "$BUILD_DIR"
 
   CMAKE_ARGS=(
-    -DCMAKE_OSX_ARCHITECTURES="$ARCH"
     -Dcmake-bare_DIR="$PKG_DIR/node_modules/cmake-bare"
     -Dcmake-npm_DIR="$PKG_DIR/node_modules/cmake-npm"
   )
 
-  if [ -n "$SYS_NAME" ]; then
-    CMAKE_ARGS+=(-DCMAKE_SYSTEM_NAME="$SYS_NAME")
-  fi
-
-  if [ -n "$SYSROOT" ]; then
-    CMAKE_ARGS+=(-DCMAKE_OSX_SYSROOT="$SYSROOT")
-  fi
+  case "$TARGET_NAME" in
+    ios-arm64)
+      CMAKE_ARGS+=(-DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_SYSROOT=iphoneos) ;;
+    ios-arm64-simulator)
+      CMAKE_ARGS+=(-DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_SYSROOT=iphonesimulator) ;;
+    ios-x64-simulator)
+      CMAKE_ARGS+=(-DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=x86_64 -DCMAKE_OSX_SYSROOT=iphonesimulator) ;;
+    darwin-arm64)
+      CMAKE_ARGS+=(-DCMAKE_OSX_ARCHITECTURES=arm64) ;;
+    android-arm64)
+      CMAKE_ARGS+=(-DCMAKE_TOOLCHAIN_FILE="$ANDROID_TOOLCHAIN" -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-24) ;;
+    android-arm)
+      CMAKE_ARGS+=(-DCMAKE_TOOLCHAIN_FILE="$ANDROID_TOOLCHAIN" -DANDROID_ABI=armeabi-v7a -DANDROID_PLATFORM=android-24) ;;
+    android-x64)
+      CMAKE_ARGS+=(-DCMAKE_TOOLCHAIN_FILE="$ANDROID_TOOLCHAIN" -DANDROID_ABI=x86_64 -DANDROID_PLATFORM=android-24) ;;
+    android-ia32)
+      CMAKE_ARGS+=(-DCMAKE_TOOLCHAIN_FILE="$ANDROID_TOOLCHAIN" -DANDROID_ABI=x86 -DANDROID_PLATFORM=android-24) ;;
+  esac
 
   cmake -B "$BUILD_DIR" -S . "${CMAKE_ARGS[@]}" 2>&1 | tail -5
   cmake --build "$BUILD_DIR" 2>&1 | tail -5
@@ -68,7 +83,8 @@ for entry in "${TARGETS[@]}"; do
 
   if [ -z "$BARE_FILE" ]; then
     echo "  ✗ No .bare file produced for $TARGET_NAME"
-    exit 1
+    rm -rf "$BUILD_DIR"
+    return 1
   fi
 
   mkdir -p "prebuilds/$TARGET_NAME"
@@ -79,7 +95,22 @@ for entry in "${TARGETS[@]}"; do
 
   # Clean up build dir
   rm -rf "$BUILD_DIR"
+}
+
+# Build iOS + darwin prebuilds
+for target in ios-arm64 ios-arm64-simulator ios-x64-simulator darwin-arm64; do
+  build_target "$target"
 done
+
+# Build Android prebuilds (if static libs exist)
+if [ "$HAVE_ANDROID" = true ]; then
+  for target in "${ANDROID_TARGETS[@]}"; do
+    build_target "$target"
+  done
+else
+  echo ""
+  echo "⚠️  Skipping Android prebuilds (missing static libs)"
+fi
 
 echo ""
 echo "=== Prebuilds complete ==="

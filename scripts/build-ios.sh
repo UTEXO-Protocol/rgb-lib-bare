@@ -130,13 +130,33 @@ setup_android_env() {
   export ANDROID_NDK_HOME="$NDK_HOME"
   export ANDROID_NDK_ROOT="$NDK_HOME"
   export ANDROID_NDK="$NDK_HOME"
+  export LLVM_STRIP="$TOOLCHAIN/bin/llvm-strip"
+
+  # arm64 (aarch64)
   export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$TOOLCHAIN/bin/aarch64-linux-android24-clang"
   export CC_aarch64_linux_android="$TOOLCHAIN/bin/aarch64-linux-android24-clang"
   export CXX_aarch64_linux_android="$TOOLCHAIN/bin/aarch64-linux-android24-clang++"
   export AR_aarch64_linux_android="$TOOLCHAIN/bin/llvm-ar"
-  export LLVM_STRIP="$TOOLCHAIN/bin/llvm-strip"
 
-  echo "  Linker: $CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER"
+  # arm (armv7)
+  export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER="$TOOLCHAIN/bin/armv7a-linux-androideabi24-clang"
+  export CC_armv7_linux_androideabi="$TOOLCHAIN/bin/armv7a-linux-androideabi24-clang"
+  export CXX_armv7_linux_androideabi="$TOOLCHAIN/bin/armv7a-linux-androideabi24-clang++"
+  export AR_armv7_linux_androideabi="$TOOLCHAIN/bin/llvm-ar"
+
+  # x64 (x86_64)
+  export CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="$TOOLCHAIN/bin/x86_64-linux-android24-clang"
+  export CC_x86_64_linux_android="$TOOLCHAIN/bin/x86_64-linux-android24-clang"
+  export CXX_x86_64_linux_android="$TOOLCHAIN/bin/x86_64-linux-android24-clang++"
+  export AR_x86_64_linux_android="$TOOLCHAIN/bin/llvm-ar"
+
+  # ia32 (i686)
+  export CARGO_TARGET_I686_LINUX_ANDROID_LINKER="$TOOLCHAIN/bin/i686-linux-android24-clang"
+  export CC_i686_linux_android="$TOOLCHAIN/bin/i686-linux-android24-clang"
+  export CXX_i686_linux_android="$TOOLCHAIN/bin/i686-linux-android24-clang++"
+  export AR_i686_linux_android="$TOOLCHAIN/bin/llvm-ar"
+
+  echo "  NDK toolchain: $TOOLCHAIN"
 }
 
 # ── Build host (darwin-arm64) ──────────────────────────────────────────────
@@ -164,7 +184,13 @@ if [ "$MODE" = "android" ] || [ "$MODE" = "all" ]; then
   echo "=== Setting up Android NDK ==="
   setup_android_env
 
+  # Clear SDKROOT to avoid iOS toolchain contamination
+  unset SDKROOT
+
   build_target "aarch64-linux-android" "android-arm64"
+  build_target "armv7-linux-androideabi" "android-arm"
+  build_target "x86_64-linux-android" "android-x64"
+  build_target "i686-linux-android" "android-ia32"
 fi
 
 echo ""

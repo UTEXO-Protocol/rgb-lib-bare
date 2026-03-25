@@ -12,15 +12,26 @@ PKG_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Platform assets to download
 # Format: "github_asset_name:local_path"
 ASSETS=(
+  # iOS static libs
   "librgblibcffi-ios-arm64.a:lib/ios-arm64/librgblibcffi.a"
   "librgblibcffi-ios-arm64-simulator.a:lib/ios-arm64-simulator/librgblibcffi.a"
+  "librgblibcffi-ios-x64-simulator.a:lib/ios-x64-simulator/librgblibcffi.a"
   "librgblibcffi-darwin-arm64.a:lib/darwin-arm64/librgblibcffi.a"
+  # Android static libs
+  "librgblibcffi-android-arm64.a:lib/android-arm64/librgblibcffi.a"
+  "librgblibcffi-android-arm.a:lib/android-arm/librgblibcffi.a"
+  "librgblibcffi-android-x64.a:lib/android-x64/librgblibcffi.a"
+  "librgblibcffi-android-ia32.a:lib/android-ia32/librgblibcffi.a"
+  # iOS prebuilds
   "utexo__rgb-lib-bare-ios-arm64.bare:prebuilds/ios-arm64/utexo__rgb-lib-bare.bare"
   "utexo__rgb-lib-bare-ios-arm64-simulator.bare:prebuilds/ios-arm64-simulator/utexo__rgb-lib-bare.bare"
   "utexo__rgb-lib-bare-ios-x64-simulator.bare:prebuilds/ios-x64-simulator/utexo__rgb-lib-bare.bare"
   "utexo__rgb-lib-bare-darwin-arm64.bare:prebuilds/darwin-arm64/utexo__rgb-lib-bare.bare"
-  "librgblibcffi-ios-x64-simulator.a:lib/ios-x64-simulator/librgblibcffi.a"
-  "librgblibcffi-android-arm64.a:lib/android-arm64/librgblibcffi.a"
+  # Android prebuilds
+  "utexo__rgb-lib-bare-android-arm64.bare:prebuilds/android-arm64/utexo__rgb-lib-bare.bare"
+  "utexo__rgb-lib-bare-android-arm.bare:prebuilds/android-arm/utexo__rgb-lib-bare.bare"
+  "utexo__rgb-lib-bare-android-x64.bare:prebuilds/android-x64/utexo__rgb-lib-bare.bare"
+  "utexo__rgb-lib-bare-android-ia32.bare:prebuilds/android-ia32/utexo__rgb-lib-bare.bare"
 )
 
 cd "$PKG_DIR"
