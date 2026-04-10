@@ -4,7 +4,7 @@ set -euo pipefail
 # Downloads pre-built static libraries and bare addon prebuilds
 # from GitHub Releases. Runs automatically via npm postinstall.
 
-REPO="Jainakin/rgb-lib-bare"
+REPO="UTEXO-Protocol/rgb-lib-bare"
 VERSION="v0.3.0-beta.15"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PKG_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
