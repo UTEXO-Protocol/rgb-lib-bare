@@ -280,9 +280,84 @@ class Wallet {
     return parseResult(binding.backupInfo(this._handle))
   }
 
+  // ───── v0.3.0-beta.15 additions ─────
+
+  getAssetMetadata (assetId) {
+    return parseResult(binding.getAssetMetadata(this._handle, assetId))
+  }
+
+  deleteTransfers (batchTransferIdxOpt, noAssetOnly) {
+    return parseResult(binding.deleteTransfers(this._handle, toFFIString(batchTransferIdxOpt), !!noAssetOnly))
+  }
+
+  failTransfers (online, batchTransferIdxOpt, noAssetOnly, skipSync) {
+    const onlineHandle = online instanceof Online ? online._handle : online
+    return parseResult(binding.failTransfers(this._handle, onlineHandle, toFFIString(batchTransferIdxOpt), !!noAssetOnly, !!skipSync))
+  }
+
+  sendBtcBegin (online, address, amount, feeRate, skipSync) {
+    const onlineHandle = online instanceof Online ? online._handle : online
+    return binding.sendBtcBegin(this._handle, onlineHandle, address, toFFIString(amount),
+      toFFIString(feeRate), !!skipSync)  // returns raw PSBT
+  }
+
+  sendBtcEnd (online, signedPsbt, skipSync) {
+    const onlineHandle = online instanceof Online ? online._handle : online
+    return parseResult(binding.sendBtcEnd(this._handle, onlineHandle, signedPsbt, !!skipSync))
+  }
+
+  // VSS backup methods
+  configureVssBackup (configJson) {
+    return parseResult(binding.configureVssBackup(this._handle, toFFIString(configJson)))
+  }
+
+  disableVssAutoBackup () {
+    return parseResult(binding.disableVssAutoBackup(this._handle))
+  }
+
+  vssBackup (vssClient) {
+    const clientHandle = vssClient instanceof VssBackupClient ? vssClient._handle : vssClient
+    return parseResult(binding.vssBackup(this._handle, clientHandle))
+  }
+
+  vssBackupInfo (vssClient) {
+    const clientHandle = vssClient instanceof VssBackupClient ? vssClient._handle : vssClient
+    return parseResult(binding.vssBackupInfo(this._handle, clientHandle))
+  }
+
   drop () {
     if (this._handle) {
       binding.freeWallet(this._handle)
+      this._handle = null
+    }
+  }
+}
+
+// ============================================================================
+// VssBackupClient (v0.3.0-beta.15)
+// ============================================================================
+
+class VssBackupClient {
+  constructor (handle) {
+    this._handle = handle
+  }
+
+  static create (configJson) {
+    const handle = binding.newVssBackupClient(toFFIString(configJson))
+    return new VssBackupClient(handle)
+  }
+
+  encryptionEnabled () {
+    return parseResult(binding.vssBackupClientEncryptionEnabled(this._handle))
+  }
+
+  deleteBackup () {
+    return parseResult(binding.vssDeleteBackup(this._handle))
+  }
+
+  drop () {
+    if (this._handle) {
+      binding.freeVssBackupClient(this._handle)
       this._handle = null
     }
   }
@@ -298,6 +373,7 @@ module.exports = {
   WalletData,
   Online,
   Invoice,
+  VssBackupClient,
 
   // Enums
   DatabaseType,
@@ -320,5 +396,13 @@ module.exports = {
     } else if (online) {
       binding.freeOnline(online)
     }
+  },
+
+  // v0.3.0-beta.15 additions — global functions
+  validateConsignment (filePath, indexerUrl, bitcoinNetwork) {
+    return parseResult(binding.validateConsignment(filePath, indexerUrl, bitcoinNetwork))
+  },
+  restoreFromVss (configJson, targetDir) {
+    return parseResult(binding.restoreFromVss(toFFIString(configJson), targetDir))
   }
 }

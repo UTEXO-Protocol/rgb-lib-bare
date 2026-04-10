@@ -1,7 +1,7 @@
 /**
  * @utexo/rgb-lib-bare - Bare native addon wrapping rgb-lib C FFI
  *
- * Wraps all 37 C FFI functions from rgblib.h for use in bare worklets.
+ * Wraps all 50 C FFI functions from rgb-lib v0.3.0-beta.15 rgblib.h.
  * Uses <bare.h> + <js.h> API (same pattern as sodium-native).
  */
 
@@ -627,6 +627,166 @@ static js_value_t *fn_invoice_string(js_env_t *env, js_callback_info_t *info) {
 }
 
 // ============================================================================
+// Group 9b: Additional wallet operations (v0.3.0-beta.15)
+// ============================================================================
+
+static js_value_t *fn_get_asset_metadata(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[2];
+  get_args(env, info, args, 2);
+  const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
+  char *asset_id = js_to_cstring(env, args[1]);
+  struct CResultString res = rgblib_get_asset_metadata(wallet, asset_id);
+  free(asset_id);
+  return handle_result_string(env, res);
+}
+
+static js_value_t *fn_delete_transfers(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[3];
+  get_args(env, info, args, 3);
+  const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
+  char *batch_idx_opt = js_to_cstring(env, args[1]);
+  bool no_asset_only = js_to_bool(env, args[2]);
+  struct CResultString res = rgblib_delete_transfers(wallet, batch_idx_opt, no_asset_only);
+  free(batch_idx_opt);
+  return handle_result_string(env, res);
+}
+
+static js_value_t *fn_fail_transfers(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[5];
+  get_args(env, info, args, 5);
+  const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
+  const struct COpaqueStruct *online = unwrap_opaque(env, args[1]);
+  char *batch_idx_opt = js_to_cstring(env, args[2]);
+  bool no_asset_only = js_to_bool(env, args[3]);
+  bool skip_sync = js_to_bool(env, args[4]);
+  struct CResultString res = rgblib_fail_transfers(wallet, online, batch_idx_opt, no_asset_only, skip_sync);
+  free(batch_idx_opt);
+  return handle_result_string(env, res);
+}
+
+static js_value_t *fn_send_btc_begin(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[6];
+  get_args(env, info, args, 6);
+  const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
+  const struct COpaqueStruct *online = unwrap_opaque(env, args[1]);
+  char *address = js_to_cstring(env, args[2]);
+  char *amount = js_to_cstring(env, args[3]);
+  char *fee_rate = js_to_cstring(env, args[4]);
+  bool skip_sync = js_to_bool(env, args[5]);
+  struct CResultString res = rgblib_send_btc_begin(wallet, online, address, amount, fee_rate, skip_sync);
+  free(address); free(amount); free(fee_rate);
+  return handle_result_string(env, res);
+}
+
+static js_value_t *fn_send_btc_end(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[4];
+  get_args(env, info, args, 4);
+  const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
+  const struct COpaqueStruct *online = unwrap_opaque(env, args[1]);
+  char *signed_psbt = js_to_cstring(env, args[2]);
+  bool skip_sync = js_to_bool(env, args[3]);
+  struct CResultString res = rgblib_send_btc_end(wallet, online, signed_psbt, skip_sync);
+  free(signed_psbt);
+  return handle_result_string(env, res);
+}
+
+static js_value_t *fn_validate_consignment(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[3];
+  get_args(env, info, args, 3);
+  char *file_path = js_to_cstring(env, args[0]);
+  char *indexer_url = js_to_cstring(env, args[1]);
+  char *bitcoin_network = js_to_cstring(env, args[2]);
+  struct CResultString res = rgblib_validate_consignment(file_path, indexer_url, bitcoin_network);
+  free(file_path); free(indexer_url); free(bitcoin_network);
+  return handle_result_string(env, res);
+}
+
+// ============================================================================
+// Group 9c: VSS backup operations (v0.3.0-beta.15)
+// ============================================================================
+
+static js_value_t *fn_new_vss_backup_client(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[1];
+  get_args(env, info, args, 1);
+  char *config_json = js_to_cstring(env, args[0]);
+  struct CResult res = rgblib_new_vss_backup_client(config_json);
+  free(config_json);
+  return handle_result_opaque(env, res, free_vss_backup_client);
+}
+
+static js_value_t *fn_free_vss_backup_client(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[1];
+  get_args(env, info, args, 1);
+  void *data;
+  js_get_value_external(env, args[0], &data);
+  OpaqueRef *ref = (OpaqueRef *)data;
+  if (!ref->freed && ref->free_fn) {
+    ref->free_fn(ref->opaque);
+    ref->freed = true;
+  }
+  js_value_t *undef;
+  js_get_undefined(env, &undef);
+  return undef;
+}
+
+static js_value_t *fn_configure_vss_backup(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[2];
+  get_args(env, info, args, 2);
+  const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
+  char *config_json = js_to_cstring(env, args[1]);
+  struct CResultString res = rgblib_configure_vss_backup(wallet, config_json);
+  free(config_json);
+  return handle_result_string(env, res);
+}
+
+static js_value_t *fn_disable_vss_auto_backup(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[1];
+  get_args(env, info, args, 1);
+  const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
+  return handle_result_string(env, rgblib_disable_vss_auto_backup(wallet));
+}
+
+static js_value_t *fn_vss_backup(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[2];
+  get_args(env, info, args, 2);
+  const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
+  const struct COpaqueStruct *client = unwrap_opaque(env, args[1]);
+  return handle_result_string(env, rgblib_vss_backup(wallet, client));
+}
+
+static js_value_t *fn_vss_backup_info(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[2];
+  get_args(env, info, args, 2);
+  const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
+  const struct COpaqueStruct *client = unwrap_opaque(env, args[1]);
+  return handle_result_string(env, rgblib_vss_backup_info(wallet, client));
+}
+
+static js_value_t *fn_vss_backup_client_encryption_enabled(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[1];
+  get_args(env, info, args, 1);
+  const struct COpaqueStruct *client = unwrap_opaque(env, args[0]);
+  return handle_result_string(env, rgblib_vss_backup_client_encryption_enabled(client));
+}
+
+static js_value_t *fn_vss_delete_backup(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[1];
+  get_args(env, info, args, 1);
+  const struct COpaqueStruct *client = unwrap_opaque(env, args[0]);
+  return handle_result_string(env, rgblib_vss_delete_backup(client));
+}
+
+static js_value_t *fn_restore_from_vss(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[2];
+  get_args(env, info, args, 2);
+  char *config_json = js_to_cstring(env, args[0]);
+  char *target_dir = js_to_cstring(env, args[1]);
+  struct CResultString res = rgblib_restore_from_vss(config_json, target_dir);
+  free(config_json); free(target_dir);
+  return handle_result_string(env, res);
+}
+
+// ============================================================================
 // Group 10: Free functions (explicit drop)
 // ============================================================================
 
@@ -742,10 +902,29 @@ rgb_lib_bare_exports(js_env_t *env, js_value_t *exports) {
   set_fn(env, exports, "invoiceData", fn_invoice_data);
   set_fn(env, exports, "invoiceString", fn_invoice_string);
 
+  // Additional wallet ops (v0.3.0-beta.15)
+  set_fn(env, exports, "getAssetMetadata", fn_get_asset_metadata);
+  set_fn(env, exports, "deleteTransfers", fn_delete_transfers);
+  set_fn(env, exports, "failTransfers", fn_fail_transfers);
+  set_fn(env, exports, "sendBtcBegin", fn_send_btc_begin);
+  set_fn(env, exports, "sendBtcEnd", fn_send_btc_end);
+  set_fn(env, exports, "validateConsignment", fn_validate_consignment);
+
+  // VSS backup (v0.3.0-beta.15)
+  set_fn(env, exports, "newVssBackupClient", fn_new_vss_backup_client);
+  set_fn(env, exports, "configureVssBackup", fn_configure_vss_backup);
+  set_fn(env, exports, "disableVssAutoBackup", fn_disable_vss_auto_backup);
+  set_fn(env, exports, "vssBackup", fn_vss_backup);
+  set_fn(env, exports, "vssBackupInfo", fn_vss_backup_info);
+  set_fn(env, exports, "vssBackupClientEncryptionEnabled", fn_vss_backup_client_encryption_enabled);
+  set_fn(env, exports, "vssDeleteBackup", fn_vss_delete_backup);
+  set_fn(env, exports, "restoreFromVss", fn_restore_from_vss);
+
   // Free (explicit drop)
   set_fn(env, exports, "freeWallet", fn_free_wallet);
   set_fn(env, exports, "freeOnline", fn_free_online);
   set_fn(env, exports, "freeInvoice", fn_free_invoice);
+  set_fn(env, exports, "freeVssBackupClient", fn_free_vss_backup_client);
 
   return exports;
 }

@@ -29,6 +29,8 @@ void free_invoice(struct COpaqueStruct obj);
 
 void free_online(struct COpaqueStruct obj);
 
+void free_vss_backup_client(struct COpaqueStruct obj);
+
 void free_wallet(struct COpaqueStruct obj);
 
 struct CResult rgblib_backup(const struct COpaqueStruct *wallet,
@@ -43,6 +45,9 @@ struct CResultString rgblib_blind_receive(const struct COpaqueStruct *wallet,
                                           const char *duration_seconds_opt,
                                           const char *transport_endpoints,
                                           const char *min_confirmations);
+
+struct CResultString rgblib_configure_vss_backup(const struct COpaqueStruct *wallet,
+                                                 const char *config_json);
 
 struct CResultString rgblib_create_utxos(const struct COpaqueStruct *wallet,
                                          const struct COpaqueStruct *online,
@@ -65,6 +70,18 @@ struct CResultString rgblib_create_utxos_end(const struct COpaqueStruct *wallet,
                                              const char *signed_psbt,
                                              bool skip_sync);
 
+struct CResultString rgblib_delete_transfers(const struct COpaqueStruct *wallet,
+                                             const char *batch_transfer_idx_opt,
+                                             bool no_asset_only);
+
+struct CResultString rgblib_disable_vss_auto_backup(const struct COpaqueStruct *wallet);
+
+struct CResultString rgblib_fail_transfers(const struct COpaqueStruct *wallet,
+                                           const struct COpaqueStruct *online,
+                                           const char *batch_transfer_idx_opt,
+                                           bool no_asset_only,
+                                           bool skip_sync);
+
 struct CResultString rgblib_finalize_psbt(const struct COpaqueStruct *wallet,
                                           const char *signed_psbt);
 
@@ -74,6 +91,9 @@ struct CResultString rgblib_get_address(const struct COpaqueStruct *wallet);
 
 struct CResultString rgblib_get_asset_balance(const struct COpaqueStruct *wallet,
                                               const char *asset_id);
+
+struct CResultString rgblib_get_asset_metadata(const struct COpaqueStruct *wallet,
+                                               const char *asset_id);
 
 struct CResultString rgblib_get_btc_balance(const struct COpaqueStruct *wallet,
                                             const struct COpaqueStruct *online,
@@ -145,6 +165,8 @@ struct CResultString rgblib_list_unspents(const struct COpaqueStruct *wallet,
                                           bool settled_only,
                                           bool skip_sync);
 
+struct CResult rgblib_new_vss_backup_client(const char *config_json);
+
 struct CResult rgblib_new_wallet(const char *wallet_data);
 
 struct CResultString rgblib_refresh(const struct COpaqueStruct *wallet,
@@ -156,6 +178,8 @@ struct CResultString rgblib_refresh(const struct COpaqueStruct *wallet,
 struct CResult rgblib_restore_backup(const char *backup_path,
                                      const char *password,
                                      const char *target_dir);
+
+struct CResultString rgblib_restore_from_vss(const char *config_json, const char *target_dir);
 
 struct CResultString rgblib_restore_keys(const char *bitcoin_network, const char *mnemonic);
 
@@ -181,6 +205,18 @@ struct CResultString rgblib_send_btc(const struct COpaqueStruct *wallet,
                                      const char *fee_rate,
                                      bool skip_sync);
 
+struct CResultString rgblib_send_btc_begin(const struct COpaqueStruct *wallet,
+                                           const struct COpaqueStruct *online,
+                                           const char *address,
+                                           const char *amount,
+                                           const char *fee_rate,
+                                           bool skip_sync);
+
+struct CResultString rgblib_send_btc_end(const struct COpaqueStruct *wallet,
+                                         const struct COpaqueStruct *online,
+                                         const char *signed_psbt,
+                                         bool skip_sync);
+
 struct CResultString rgblib_send_end(const struct COpaqueStruct *wallet,
                                      const struct COpaqueStruct *online,
                                      const char *signed_psbt,
@@ -191,6 +227,20 @@ struct CResultString rgblib_sign_psbt(const struct COpaqueStruct *wallet,
 
 struct CResultString rgblib_sync(const struct COpaqueStruct *wallet,
                                  const struct COpaqueStruct *online);
+
+struct CResultString rgblib_validate_consignment(const char *file_path,
+                                                 const char *indexer_url,
+                                                 const char *bitcoin_network);
+
+struct CResultString rgblib_vss_backup(const struct COpaqueStruct *wallet,
+                                       const struct COpaqueStruct *client);
+
+struct CResultString rgblib_vss_backup_client_encryption_enabled(const struct COpaqueStruct *client);
+
+struct CResultString rgblib_vss_backup_info(const struct COpaqueStruct *wallet,
+                                            const struct COpaqueStruct *client);
+
+struct CResultString rgblib_vss_delete_backup(const struct COpaqueStruct *client);
 
 struct CResultString rgblib_witness_receive(const struct COpaqueStruct *wallet,
                                             const char *asset_id_opt,

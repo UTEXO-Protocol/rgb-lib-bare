@@ -1,6 +1,6 @@
 {
   "name": "@utexo/rgb-lib-bare",
-  "version": "0.3.0-beta.13",
+  "version": "0.3.0-beta.15",
   "description": "Bare native addon wrapping rgb-lib C FFI for use in bare worklets",
   "main": "index.js",
   "addon": true,

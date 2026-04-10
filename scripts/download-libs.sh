@@ -5,7 +5,7 @@ set -euo pipefail
 # from GitHub Releases. Runs automatically via npm postinstall.
 
 REPO="Jainakin/rgb-lib-bare"
-VERSION="v0.3.0-beta.13"
+VERSION="v0.3.0-beta.15"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PKG_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
