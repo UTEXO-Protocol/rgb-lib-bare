@@ -1,18 +1,39 @@
 # RGB Lib Bare bindings
 
-This project builds a [Bare] runtime native addon, `@utexo/rgb-lib-bare`, for
-the [rgb-lib] Rust library, which is included as a git submodule. The bindings
-are created using the [rgb-lib C FFI] (located inside the rgb-lib submodule)
-and [cmake-bare].
+[Bare]-runtime native addon for the [rgb-lib] Rust library — built to plug
+RGB into the [Tether WDK] (Wallet Development Kit) alongside BTC, EVM, TON,
+Solana, and the other chains WDK supports.
+
+This project includes `rgb-lib` as a git submodule, wraps its [C FFI] via
+`binding.cc`, and builds a `.bare` native addon using [cmake-bare]. The
+static library is statically linked into the addon so a single `.bare` file
+is self-contained — required for iOS and optimal for Android.
 
 ## Why Bare?
 
 Node.js bindings ([rgb-lib-nodejs]) and Swift bindings ([rgb-lib-swift]) cover
-desktop and native iOS, but **React Native apps need Bare** — it's the JS
-runtime used by [react-native-bare-kit] worklets, which run isolated JS
-contexts inside mobile apps. This package provides the same rgb-lib
-functionality as the Node.js version, compiled and linked statically so it can
-run inside a bare worklet on iOS and Android devices.
+desktop and native iOS. This package exists for a specific consumer: the
+**[Tether WDK]** (Wallet Development Kit). WDK runs its chain-specific wallet
+logic inside a [Bare] worklet — a sandboxed JS runtime that executes inside
+the host app via [react-native-bare-kit] on mobile or as a subprocess on
+desktop. Each supported chain (BTC, EVM, TON, Solana, etc.) ships as a
+`@wdk/wallet-*` package that runs inside the worklet.
+
+For RGB to join WDK, `rgb-lib` needs to be callable from inside that worklet.
+That means:
+
+- The native code must **link statically** into a `.bare` addon (worklets
+  can't dlopen shared libraries the way Node can — and iOS App Store policy
+  forbids dynamic linking anyway).
+- The JS API must be the **same shape** as `@utexo/rgb-lib` (the Node.js
+  package) so [`@utexo/wdk-wallet-rgb`][wdk-wallet-rgb] and [rgb-sdk] can
+  write one code path that works in both runtimes via the `@utexo/rgb-lib`
+  universal loader.
+
+This package is the layer that makes both possible. Consumers don't import it
+directly in React Native code — they import `@utexo/rgb-lib` (or use WDK),
+and the universal loader picks `rgb-lib-bare` when it detects the bare
+runtime.
 
 ## Platform support
 
@@ -40,6 +61,13 @@ self-contained `.bare` addon on Android.
 - [bare] runtime (for actually running the addon)
 
 ## Installation
+
+You don't normally install this package directly. It's a transitive
+dependency of [`@utexo/wdk-wallet-rgb`][wdk-wallet-rgb], which gets pulled in
+automatically when you use WDK with the RGB chain enabled.
+
+If you are building something that runs inside a bare worklet and need
+`rgb-lib` directly, you can install it explicitly:
 
 ```sh
 npm install @utexo/rgb-lib-bare
@@ -153,7 +181,11 @@ runtime, while cmake-bare links statically at build time. Everything else
 [bare]: https://github.com/holepunchto/bare
 [cmake-bare]: https://github.com/holepunchto/cmake-bare
 [react-native-bare-kit]: https://github.com/holepunchto/react-native-bare-kit
+[Tether WDK]: https://github.com/tetherto/wdk
+[wdk-wallet-rgb]: https://github.com/UTEXO-Protocol/wdk-wallet-rgb
+[rgb-sdk]: https://github.com/UTEXO-Protocol/rgb-sdk
 [rgb-lib]: https://github.com/UTEXO-Protocol/rgb-lib
 [rgb-lib-nodejs]: https://github.com/UTEXO-Protocol/rgb-lib-nodejs
 [rgb-lib-swift]: https://github.com/UTEXO-Protocol/rgb-lib-swift
 [rgb-lib C FFI]: https://github.com/UTEXO-Protocol/rgb-lib/tree/master/bindings/c-ffi
+[C FFI]: https://github.com/UTEXO-Protocol/rgb-lib/tree/master/bindings/c-ffi
