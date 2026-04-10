@@ -1,0 +1,313 @@
+name: Build and Release (Bare)
+
+on:
+  # Trigger from rgb-lib repository when a new version is tagged
+  repository_dispatch:
+    types: [rgb-lib-release]
+
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      rgb_lib_version:
+        description: 'rgb-lib version (e.g. v0.3.0-beta.15)'
+        required: true
+        type: string
+
+jobs:
+  # ============================================================================
+  # Job 1: Build librgblibcffi.a (Rust static lib) for all targets
+  # ============================================================================
+  build-rust-libs:
+    name: Build static lib (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Apple targets — must build on macOS
+          - runner: macos-latest
+            os: apple
+            target: aarch64-apple-ios
+            platform: ios-arm64
+            sdk: iphoneos
+          - runner: macos-latest
+            os: apple
+            target: aarch64-apple-ios-sim
+            platform: ios-arm64-simulator
+            sdk: iphonesimulator
+          - runner: macos-latest
+            os: apple
+            target: x86_64-apple-ios
+            platform: ios-x64-simulator
+            sdk: iphonesimulator
+          - runner: macos-latest
+            os: apple
+            target: aarch64-apple-darwin
+            platform: darwin-arm64
+            sdk: ''
+          # Android targets — built on macOS or Linux with NDK
+          - runner: macos-latest
+            os: android
+            target: aarch64-linux-android
+            platform: android-arm64
+            ndk_linker: aarch64-linux-android24-clang
+          - runner: macos-latest
+            os: android
+            target: armv7-linux-androideabi
+            platform: android-arm
+            ndk_linker: armv7a-linux-androideabi24-clang
+          - runner: macos-latest
+            os: android
+            target: x86_64-linux-android
+            platform: android-x64
+            ndk_linker: x86_64-linux-android24-clang
+          - runner: macos-latest
+            os: android
+            target: i686-linux-android
+            platform: android-ia32
+            ndk_linker: i686-linux-android24-clang
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Resolve rgb-lib version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "repository_dispatch" ]; then
+            echo "version=${{ github.event.client_payload.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ inputs.rgb_lib_version }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Pin rgb-lib submodule
+        run: |
+          cd rgb-lib
+          git fetch --tags
+          git checkout ${{ steps.version.outputs.version }}
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+
+      - name: Install bindgen-cli (needed for aws-lc-sys on non-arm64 Android)
+        if: matrix.os == 'android'
+        run: cargo install --force bindgen-cli --version 0.72.1
+
+      - name: Setup Android NDK
+        if: matrix.os == 'android'
+        uses: nttld/setup-ndk@v1
+        id: setup_ndk
+        with:
+          ndk-version: r27c
+
+      - name: Build (Apple iOS/Darwin)
+        if: matrix.os == 'apple'
+        env:
+          SDKROOT: ''
+        run: |
+          cd rgb-lib/bindings/c-ffi
+          if [ -n "${{ matrix.sdk }}" ]; then
+            export SDKROOT=$(xcrun --sdk ${{ matrix.sdk }} --show-sdk-path)
+          fi
+          cargo rustc --release --target ${{ matrix.target }} --features camel_case,vss --crate-type staticlib
+          strip -S target/${{ matrix.target }}/release/librgblibcffi.a || true
+
+      - name: Build (Android)
+        if: matrix.os == 'android'
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup_ndk.outputs.ndk-path }}
+          ANDROID_NDK_ROOT: ${{ steps.setup_ndk.outputs.ndk-path }}
+          AWS_LC_SYS_CMAKE_BUILDER: '1'
+        run: |
+          cd rgb-lib/bindings/c-ffi
+          TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64"
+          TARGET_UPPER=$(echo ${{ matrix.target }} | tr 'a-z-' 'A-Z_')
+
+          export CARGO_TARGET_${TARGET_UPPER}_LINKER="$TOOLCHAIN/bin/${{ matrix.ndk_linker }}"
+          TARGET_UNDERSCORE=$(echo ${{ matrix.target }} | tr '-' '_')
+          export CC_${TARGET_UNDERSCORE}="$TOOLCHAIN/bin/${{ matrix.ndk_linker }}"
+          export CXX_${TARGET_UNDERSCORE}="$TOOLCHAIN/bin/${{ matrix.ndk_linker }}++"
+          export AR_${TARGET_UNDERSCORE}="$TOOLCHAIN/bin/llvm-ar"
+
+          # bindgen needs the Android sysroot for non-arm64 targets
+          export BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$TOOLCHAIN/sysroot -target ${{ matrix.target }}24"
+
+          cargo rustc --release --target ${{ matrix.target }} --features camel_case,vss --crate-type staticlib
+          "$TOOLCHAIN/bin/llvm-strip" --strip-debug target/${{ matrix.target }}/release/librgblibcffi.a || true
+
+      - name: Upload static lib artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: librgblibcffi-${{ matrix.platform }}
+          path: rgb-lib/bindings/c-ffi/target/${{ matrix.target }}/release/librgblibcffi.a
+          retention-days: 1
+
+  # ============================================================================
+  # Job 2: Build .bare prebuilds (cmake-bare) for all targets — needs macOS for iOS
+  # ============================================================================
+  build-bare-prebuilds:
+    name: Build bare prebuild (${{ matrix.platform }})
+    needs: build-rust-libs
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ios-arm64
+            cmake_args: '-DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_SYSROOT=iphoneos'
+          - platform: ios-arm64-simulator
+            cmake_args: '-DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_SYSROOT=iphonesimulator'
+          - platform: ios-x64-simulator
+            cmake_args: '-DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=x86_64 -DCMAKE_OSX_SYSROOT=iphonesimulator'
+          - platform: darwin-arm64
+            cmake_args: '-DCMAKE_OSX_ARCHITECTURES=arm64'
+          - platform: android-arm64
+            android_abi: arm64-v8a
+          - platform: android-arm
+            android_abi: armeabi-v7a
+          - platform: android-x64
+            android_abi: x86_64
+          - platform: android-ia32
+            android_abi: x86
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (for cmake-bare)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Download rust static lib artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: librgblibcffi-${{ matrix.platform }}
+          path: lib/${{ matrix.platform }}
+
+      - name: Setup Android NDK
+        if: startsWith(matrix.platform, 'android-')
+        uses: nttld/setup-ndk@v1
+        id: setup_ndk
+        with:
+          ndk-version: r27c
+
+      - name: Build prebuild (Apple)
+        if: ${{ !startsWith(matrix.platform, 'android-') }}
+        run: |
+          rm -rf build-tmp && mkdir -p build-tmp
+          cmake -B build-tmp -S . \
+            -Dcmake-bare_DIR="$PWD/node_modules/cmake-bare" \
+            -Dcmake-npm_DIR="$PWD/node_modules/cmake-npm" \
+            ${{ matrix.cmake_args }}
+          cmake --build build-tmp
+          BARE=$(find build-tmp -name "*.bare" -type f | head -1)
+          mkdir -p prebuilds/${{ matrix.platform }}
+          cp "$BARE" prebuilds/${{ matrix.platform }}/utexo__rgb-lib-bare.bare
+
+      - name: Build prebuild (Android)
+        if: startsWith(matrix.platform, 'android-')
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup_ndk.outputs.ndk-path }}
+        run: |
+          rm -rf build-tmp && mkdir -p build-tmp
+          cmake -B build-tmp -S . \
+            -Dcmake-bare_DIR="$PWD/node_modules/cmake-bare" \
+            -Dcmake-npm_DIR="$PWD/node_modules/cmake-npm" \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=${{ matrix.android_abi }} \
+            -DANDROID_PLATFORM=android-24 \
+            -DANDROID_ALLOW_UNDEFINED_SYMBOLS=TRUE
+          cmake --build build-tmp
+          BARE=$(find build-tmp -name "*.bare" -type f | head -1)
+          mkdir -p prebuilds/${{ matrix.platform }}
+          cp "$BARE" prebuilds/${{ matrix.platform }}/utexo__rgb-lib-bare.bare
+
+      - name: Upload prebuild artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: prebuild-${{ matrix.platform }}
+          path: prebuilds/${{ matrix.platform }}/utexo__rgb-lib-bare.bare
+          retention-days: 1
+
+  # ============================================================================
+  # Job 3: Release — upload all assets to GitHub Release + publish npm package
+  # ============================================================================
+  release:
+    name: Release and Publish
+    needs: [build-rust-libs, build-bare-prebuilds]
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve rgb-lib version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "repository_dispatch" ]; then
+            echo "version=${{ github.event.client_payload.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ inputs.rgb_lib_version }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download all static libs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: librgblibcffi-*
+          path: artifacts/static-libs
+
+      - name: Download all prebuilds
+        uses: actions/download-artifact@v4
+        with:
+          pattern: prebuild-*
+          path: artifacts/prebuilds
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          # Static libs: librgblibcffi-{platform}.a
+          for dir in artifacts/static-libs/librgblibcffi-*; do
+            platform=$(basename "$dir" | sed 's/librgblibcffi-//')
+            cp "$dir/librgblibcffi.a" "release-assets/librgblibcffi-${platform}.a"
+          done
+          # Prebuilds: utexo__rgb-lib-bare-{platform}.bare
+          for dir in artifacts/prebuilds/prebuild-*; do
+            platform=$(basename "$dir" | sed 's/prebuild-//')
+            cp "$dir/utexo__rgb-lib-bare.bare" "release-assets/utexo__rgb-lib-bare-${platform}.bare"
+          done
+          ls -lh release-assets/
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          gh release create "$VERSION" \
+            --title "Release $VERSION" \
+            --notes "Automated release for rgb-lib $VERSION. Contains librgblibcffi.a and .bare prebuilds for iOS (arm64, arm64-sim, x64-sim), macOS (arm64), and Android (arm64, arm, x64, ia32)." \
+            --prerelease || echo "Release may already exist, updating assets..."
+          gh release upload "$VERSION" release-assets/* --clobber
+
+      - name: Setup Node.js for npm publish
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Bump package version to match rgb-lib
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          # Strip leading 'v' if present
+          NPM_VERSION="${VERSION#v}"
+          npm version "$NPM_VERSION" --no-git-tag-version --allow-same-version
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
