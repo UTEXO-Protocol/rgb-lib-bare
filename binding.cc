@@ -1,7 +1,7 @@
 /**
  * @utexo/rgb-lib-bare - Bare native addon wrapping rgb-lib C FFI
  *
- * Wraps all 50 C FFI functions from rgb-lib v0.3.0-beta.15 rgblib.h.
+ * Wraps all 51 C FFI functions from rgb-lib dev branch rgblib.h.
  * Uses <bare.h> + <js.h> API (same pattern as sodium-native).
  */
 
@@ -181,11 +181,12 @@ static js_value_t *fn_restore_keys(js_env_t *env, js_callback_info_t *info) {
 // ============================================================================
 
 static js_value_t *fn_new_wallet(js_env_t *env, js_callback_info_t *info) {
-  js_value_t *args[1];
-  get_args(env, info, args, 1);
+  js_value_t *args[2];
+  get_args(env, info, args, 2);
   char *wallet_data = js_to_cstring(env, args[0]);
-  struct CResult res = rgblib_new_wallet(wallet_data);
-  free(wallet_data);
+  char *keys = js_to_cstring(env, args[1]);
+  struct CResult res = rgblib_new_wallet(wallet_data, keys);
+  free(wallet_data); free(keys);
   return handle_result_opaque(env, res, free_wallet);
 }
 
@@ -390,31 +391,34 @@ static js_value_t *fn_create_utxos_end(js_env_t *env, js_callback_info_t *info) 
 // ============================================================================
 
 static js_value_t *fn_send(js_env_t *env, js_callback_info_t *info) {
-  js_value_t *args[7];
-  get_args(env, info, args, 7);
+  js_value_t *args[8];
+  get_args(env, info, args, 8);
   const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
   const struct COpaqueStruct *online = unwrap_opaque(env, args[1]);
   char *recipient_map = js_to_cstring(env, args[2]);
   bool donation = js_to_bool(env, args[3]);
   char *fee_rate = js_to_cstring(env, args[4]);
   char *min_conf = js_to_cstring(env, args[5]);
-  bool skip_sync = js_to_bool(env, args[6]);
-  struct CResultString res = rgblib_send(wallet, online, recipient_map, donation, fee_rate, min_conf, skip_sync);
-  free(recipient_map); free(fee_rate); free(min_conf);
+  char *expiration_timestamp_opt = js_to_cstring(env, args[6]);
+  bool skip_sync = js_to_bool(env, args[7]);
+  struct CResultString res = rgblib_send(wallet, online, recipient_map, donation, fee_rate, min_conf, expiration_timestamp_opt, skip_sync);
+  free(recipient_map); free(fee_rate); free(min_conf); free(expiration_timestamp_opt);
   return handle_result_string(env, res);
 }
 
 static js_value_t *fn_send_begin(js_env_t *env, js_callback_info_t *info) {
-  js_value_t *args[6];
-  get_args(env, info, args, 6);
+  js_value_t *args[8];
+  get_args(env, info, args, 8);
   const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
   const struct COpaqueStruct *online = unwrap_opaque(env, args[1]);
   char *recipient_map = js_to_cstring(env, args[2]);
   bool donation = js_to_bool(env, args[3]);
   char *fee_rate = js_to_cstring(env, args[4]);
   char *min_conf = js_to_cstring(env, args[5]);
-  struct CResultString res = rgblib_send_begin(wallet, online, recipient_map, donation, fee_rate, min_conf);
-  free(recipient_map); free(fee_rate); free(min_conf);
+  char *expiration_timestamp_opt = js_to_cstring(env, args[6]);
+  bool dry_run = js_to_bool(env, args[7]);
+  struct CResultString res = rgblib_send_begin(wallet, online, recipient_map, donation, fee_rate, min_conf, expiration_timestamp_opt, dry_run);
+  free(recipient_map); free(fee_rate); free(min_conf); free(expiration_timestamp_opt);
   return handle_result_string(env, res);
 }
 
@@ -504,20 +508,19 @@ static js_value_t *fn_issue_asset_cfa(js_env_t *env, js_callback_info_t *info) {
 }
 
 static js_value_t *fn_issue_asset_ifa(js_env_t *env, js_callback_info_t *info) {
-  js_value_t *args[8];
-  get_args(env, info, args, 8);
+  js_value_t *args[7];
+  get_args(env, info, args, 7);
   const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
   char *ticker = js_to_cstring(env, args[1]);
   char *name = js_to_cstring(env, args[2]);
   char *precision = js_to_cstring(env, args[3]);
   char *amounts = js_to_cstring(env, args[4]);
   char *inflation = js_to_cstring(env, args[5]);
-  char *replace_rights = js_to_cstring(env, args[6]);
-  char *reject_url = js_to_cstring(env, args[7]);
+  char *reject_url = js_to_cstring(env, args[6]);
   struct CResultString res = rgblib_issue_asset_ifa(wallet, ticker, name, precision, amounts,
-                                                    inflation, replace_rights, reject_url);
+                                                    inflation, reject_url);
   free(ticker); free(name); free(precision); free(amounts);
-  free(inflation); free(replace_rights); free(reject_url);
+  free(inflation); free(reject_url);
   return handle_result_string(env, res);
 }
 
@@ -664,29 +667,29 @@ static js_value_t *fn_fail_transfers(js_env_t *env, js_callback_info_t *info) {
   return handle_result_string(env, res);
 }
 
-static js_value_t *fn_send_btc_begin(js_env_t *env, js_callback_info_t *info) {
-  js_value_t *args[6];
-  get_args(env, info, args, 6);
+static js_value_t *fn_rotate_colored_address(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[1];
+  get_args(env, info, args, 1);
   const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
-  const struct COpaqueStruct *online = unwrap_opaque(env, args[1]);
-  char *address = js_to_cstring(env, args[2]);
-  char *amount = js_to_cstring(env, args[3]);
-  char *fee_rate = js_to_cstring(env, args[4]);
-  bool skip_sync = js_to_bool(env, args[5]);
-  struct CResultString res = rgblib_send_btc_begin(wallet, online, address, amount, fee_rate, skip_sync);
-  free(address); free(amount); free(fee_rate);
-  return handle_result_string(env, res);
+  return handle_result_string(env, rgblib_rotate_colored_address(wallet));
 }
 
-static js_value_t *fn_send_btc_end(js_env_t *env, js_callback_info_t *info) {
+static js_value_t *fn_rotate_vanilla_address(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[1];
+  get_args(env, info, args, 1);
+  const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
+  return handle_result_string(env, rgblib_rotate_vanilla_address(wallet));
+}
+
+static js_value_t *fn_validate_consignment_offchain(js_env_t *env, js_callback_info_t *info) {
   js_value_t *args[4];
   get_args(env, info, args, 4);
-  const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
-  const struct COpaqueStruct *online = unwrap_opaque(env, args[1]);
-  char *signed_psbt = js_to_cstring(env, args[2]);
-  bool skip_sync = js_to_bool(env, args[3]);
-  struct CResultString res = rgblib_send_btc_end(wallet, online, signed_psbt, skip_sync);
-  free(signed_psbt);
+  char *file_path = js_to_cstring(env, args[0]);
+  char *txid = js_to_cstring(env, args[1]);
+  char *indexer_url = js_to_cstring(env, args[2]);
+  char *bitcoin_network = js_to_cstring(env, args[3]);
+  struct CResultString res = rgblib_validate_consignment_offchain(file_path, txid, indexer_url, bitcoin_network);
+  free(file_path); free(txid); free(indexer_url); free(bitcoin_network);
   return handle_result_string(env, res);
 }
 
@@ -902,13 +905,14 @@ rgb_lib_bare_exports(js_env_t *env, js_value_t *exports) {
   set_fn(env, exports, "invoiceData", fn_invoice_data);
   set_fn(env, exports, "invoiceString", fn_invoice_string);
 
-  // Additional wallet ops (v0.3.0-beta.15)
+  // Additional wallet ops (v0.3.0-beta.15+)
   set_fn(env, exports, "getAssetMetadata", fn_get_asset_metadata);
   set_fn(env, exports, "deleteTransfers", fn_delete_transfers);
   set_fn(env, exports, "failTransfers", fn_fail_transfers);
-  set_fn(env, exports, "sendBtcBegin", fn_send_btc_begin);
-  set_fn(env, exports, "sendBtcEnd", fn_send_btc_end);
+  set_fn(env, exports, "rotateColoredAddress", fn_rotate_colored_address);
+  set_fn(env, exports, "rotateVanillaAddress", fn_rotate_vanilla_address);
   set_fn(env, exports, "validateConsignment", fn_validate_consignment);
+  set_fn(env, exports, "validateConsignmentOffchain", fn_validate_consignment_offchain);
 
   // VSS backup (v0.3.0-beta.15)
   set_fn(env, exports, "newVssBackupClient", fn_new_vss_backup_client);

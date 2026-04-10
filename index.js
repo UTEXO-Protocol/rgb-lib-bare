@@ -118,11 +118,14 @@ class Invoice {
 // ============================================================================
 
 class Wallet {
-  constructor (walletData) {
+  constructor (walletData, keys) {
     const json = walletData instanceof WalletData
       ? walletData.toString()
       : (typeof walletData === 'string' ? walletData : JSON.stringify(walletData))
-    this._handle = binding.newWallet(json)
+    const keysJson = keys == null
+      ? null
+      : (typeof keys === 'string' ? keys : JSON.stringify(keys))
+    this._handle = binding.newWallet(json, keysJson)
   }
 
   goOnline (skipConsistencyCheck, electrumUrl) {
@@ -193,16 +196,16 @@ class Wallet {
     return parseResult(binding.createUtxosEnd(this._handle, onlineHandle, signedPsbt, !!skipSync))
   }
 
-  send (online, recipientMap, donation, feeRate, minConfirmations, skipSync) {
+  send (online, recipientMap, donation, feeRate, minConfirmations, expirationTimestampOpt, skipSync) {
     const onlineHandle = online instanceof Online ? online._handle : online
     return parseResult(binding.send(this._handle, onlineHandle, toFFIString(recipientMap), !!donation,
-      toFFIString(feeRate), toFFIString(minConfirmations), !!skipSync))
+      toFFIString(feeRate), toFFIString(minConfirmations), toFFIString(expirationTimestampOpt), !!skipSync))
   }
 
-  sendBegin (online, recipientMap, donation, feeRate, minConfirmations) {
+  sendBegin (online, recipientMap, donation, feeRate, minConfirmations, expirationTimestampOpt, dryRun) {
     const onlineHandle = online instanceof Online ? online._handle : online
     return binding.sendBegin(this._handle, onlineHandle, toFFIString(recipientMap), !!donation,
-      toFFIString(feeRate), toFFIString(minConfirmations))  // returns raw PSBT string
+      toFFIString(feeRate), toFFIString(minConfirmations), toFFIString(expirationTimestampOpt), !!dryRun)  // returns raw PSBT string
   }
 
   sendEnd (online, signedPsbt, skipSync) {
@@ -244,9 +247,9 @@ class Wallet {
     return this.issueAssetCfa(name, detailsOpt, precision, amounts, filePathOpt)
   }
 
-  issueAssetIfa (ticker, name, precision, amounts, inflationAmounts, replaceRightsNum, rejectListUrlOpt) {
+  issueAssetIfa (ticker, name, precision, amounts, inflationAmounts, rejectListUrlOpt) {
     return parseResult(binding.issueAssetIfa(this._handle, ticker, name, toFFIString(precision), toFFIString(amounts),
-      toFFIString(inflationAmounts), toFFIString(replaceRightsNum), rejectListUrlOpt || null))
+      toFFIString(inflationAmounts), rejectListUrlOpt || null))
   }
 
   issueAssetUda (ticker, name, detailsOpt, precision, mediaFilePathOpt, attachmentsFilePaths) {
@@ -295,15 +298,12 @@ class Wallet {
     return parseResult(binding.failTransfers(this._handle, onlineHandle, toFFIString(batchTransferIdxOpt), !!noAssetOnly, !!skipSync))
   }
 
-  sendBtcBegin (online, address, amount, feeRate, skipSync) {
-    const onlineHandle = online instanceof Online ? online._handle : online
-    return binding.sendBtcBegin(this._handle, onlineHandle, address, toFFIString(amount),
-      toFFIString(feeRate), !!skipSync)  // returns raw PSBT
+  rotateColoredAddress () {
+    return parseResult(binding.rotateColoredAddress(this._handle))
   }
 
-  sendBtcEnd (online, signedPsbt, skipSync) {
-    const onlineHandle = online instanceof Online ? online._handle : online
-    return parseResult(binding.sendBtcEnd(this._handle, onlineHandle, signedPsbt, !!skipSync))
+  rotateVanillaAddress () {
+    return parseResult(binding.rotateVanillaAddress(this._handle))
   }
 
   // VSS backup methods
@@ -398,9 +398,12 @@ module.exports = {
     }
   },
 
-  // v0.3.0-beta.15 additions — global functions
+  // v0.3.0-beta.15+ additions — global functions
   validateConsignment (filePath, indexerUrl, bitcoinNetwork) {
     return parseResult(binding.validateConsignment(filePath, indexerUrl, bitcoinNetwork))
+  },
+  validateConsignmentOffchain (filePath, txid, indexerUrl, bitcoinNetwork) {
+    return parseResult(binding.validateConsignmentOffchain(filePath, txid, indexerUrl, bitcoinNetwork))
   },
   restoreFromVss (configJson, targetDir) {
     return parseResult(binding.restoreFromVss(toFFIString(configJson), targetDir))
