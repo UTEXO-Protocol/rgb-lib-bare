@@ -117,15 +117,61 @@ class Invoice {
 // Wallet
 // ============================================================================
 
+// rgb-lib dev branch split the old WalletData into (walletData, keys).
+// These are the fields that belong to SinglesigKeys in the new API.
+const KEY_FIELDS = [
+  'accountXpubVanilla',
+  'accountXpubColored',
+  'vanillaKeychain',
+  'masterFingerprint',
+  'mnemonic',
+  // snake_case fallback (some callers pass this)
+  'account_xpub_vanilla',
+  'account_xpub_colored',
+  'vanilla_keychain',
+  'master_fingerprint'
+]
+
+function splitWalletDataAndKeys (combined) {
+  const walletData = {}
+  const keys = {}
+  for (const [k, v] of Object.entries(combined)) {
+    if (KEY_FIELDS.includes(k)) {
+      keys[k] = v
+    } else {
+      walletData[k] = v
+    }
+  }
+  return { walletData, keys }
+}
+
 class Wallet {
-  constructor (walletData, keys) {
-    const json = walletData instanceof WalletData
-      ? walletData.toString()
-      : (typeof walletData === 'string' ? walletData : JSON.stringify(walletData))
-    const keysJson = keys == null
-      ? null
-      : (typeof keys === 'string' ? keys : JSON.stringify(keys))
-    this._handle = binding.newWallet(json, keysJson)
+  constructor (walletDataOrBoth, keysArg) {
+    let walletJson, keysJson
+
+    if (keysArg != null) {
+      // New API: caller provides walletData + keys separately
+      walletJson = walletDataOrBoth instanceof WalletData
+        ? walletDataOrBoth.toString()
+        : (typeof walletDataOrBoth === 'string' ? walletDataOrBoth : JSON.stringify(walletDataOrBoth))
+      keysJson = typeof keysArg === 'string' ? keysArg : JSON.stringify(keysArg)
+    } else {
+      // Backward compat: caller provides one combined object (old v0.3.0-beta.15 shape).
+      // Split it into walletData + keys before calling the new C FFI.
+      let combined
+      if (walletDataOrBoth instanceof WalletData) {
+        combined = JSON.parse(walletDataOrBoth.toString())
+      } else if (typeof walletDataOrBoth === 'string') {
+        combined = JSON.parse(walletDataOrBoth)
+      } else {
+        combined = walletDataOrBoth
+      }
+      const { walletData, keys } = splitWalletDataAndKeys(combined)
+      walletJson = JSON.stringify(walletData)
+      keysJson = JSON.stringify(keys)
+    }
+
+    this._handle = binding.newWallet(walletJson, keysJson)
   }
 
   goOnline (skipConsistencyCheck, electrumUrl) {
