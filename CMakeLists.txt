@@ -11,6 +11,17 @@ bare_target(target)
 # Create the bare module
 add_bare_module(rgb_lib_bare)
 
+# Android NDK sets -Wl,--no-undefined globally, which prevents js_* symbols
+# from being left unresolved. These symbols are provided by bare-kit at runtime.
+# Use --unresolved-symbols=ignore-all to override on Android.
+if(target MATCHES "android")
+  target_link_options(
+    ${rgb_lib_bare}_module
+    PRIVATE
+      "-Wl,--unresolved-symbols=ignore-all"
+  )
+endif()
+
 target_sources(
   ${rgb_lib_bare}
   PRIVATE
