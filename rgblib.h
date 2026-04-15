@@ -211,6 +211,18 @@ struct CResultString rgblib_send_btc(const struct COpaqueStruct *wallet,
                                      const char *fee_rate,
                                      bool skip_sync);
 
+struct CResultString rgblib_send_btc_begin(const struct COpaqueStruct *wallet,
+                                           const struct COpaqueStruct *online,
+                                           const char *address,
+                                           const char *amount,
+                                           const char *fee_rate,
+                                           bool skip_sync);
+
+struct CResultString rgblib_send_btc_end(const struct COpaqueStruct *wallet,
+                                         const struct COpaqueStruct *online,
+                                         const char *signed_psbt,
+                                         bool skip_sync);
+
 struct CResultString rgblib_send_end(const struct COpaqueStruct *wallet,
                                      const struct COpaqueStruct *online,
                                      const char *signed_psbt,

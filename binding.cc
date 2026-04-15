@@ -448,6 +448,32 @@ static js_value_t *fn_send_btc(js_env_t *env, js_callback_info_t *info) {
   return handle_result_string(env, res);
 }
 
+static js_value_t *fn_send_btc_begin(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[6];
+  get_args(env, info, args, 6);
+  const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
+  const struct COpaqueStruct *online = unwrap_opaque(env, args[1]);
+  char *address = js_to_cstring(env, args[2]);
+  char *amount = js_to_cstring(env, args[3]);
+  char *fee_rate = js_to_cstring(env, args[4]);
+  bool skip_sync = js_to_bool(env, args[5]);
+  struct CResultString res = rgblib_send_btc_begin(wallet, online, address, amount, fee_rate, skip_sync);
+  free(address); free(amount); free(fee_rate);
+  return handle_result_string(env, res);
+}
+
+static js_value_t *fn_send_btc_end(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[4];
+  get_args(env, info, args, 4);
+  const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
+  const struct COpaqueStruct *online = unwrap_opaque(env, args[1]);
+  char *signed_psbt = js_to_cstring(env, args[2]);
+  bool skip_sync = js_to_bool(env, args[3]);
+  struct CResultString res = rgblib_send_btc_end(wallet, online, signed_psbt, skip_sync);
+  free(signed_psbt);
+  return handle_result_string(env, res);
+}
+
 static js_value_t *fn_blind_receive(js_env_t *env, js_callback_info_t *info) {
   js_value_t *args[6];
   get_args(env, info, args, 6);
@@ -708,6 +734,7 @@ static js_value_t *fn_validate_consignment(js_env_t *env, js_callback_info_t *in
 // Group 9c: VSS backup operations (v0.3.0-beta.15)
 // ============================================================================
 
+#ifdef HAS_VSS
 static js_value_t *fn_new_vss_backup_client(js_env_t *env, js_callback_info_t *info) {
   js_value_t *args[1];
   get_args(env, info, args, 1);
@@ -788,6 +815,7 @@ static js_value_t *fn_restore_from_vss(js_env_t *env, js_callback_info_t *info) 
   free(config_json); free(target_dir);
   return handle_result_string(env, res);
 }
+#endif // HAS_VSS
 
 // ============================================================================
 // Group 10: Free functions (explicit drop)
@@ -883,6 +911,8 @@ rgb_lib_bare_exports(js_env_t *env, js_value_t *exports) {
   set_fn(env, exports, "sendBegin", fn_send_begin);
   set_fn(env, exports, "sendEnd", fn_send_end);
   set_fn(env, exports, "sendBtc", fn_send_btc);
+  set_fn(env, exports, "sendBtcBegin", fn_send_btc_begin);
+  set_fn(env, exports, "sendBtcEnd", fn_send_btc_end);
   set_fn(env, exports, "blindReceive", fn_blind_receive);
   set_fn(env, exports, "witnessReceive", fn_witness_receive);
 
@@ -915,6 +945,7 @@ rgb_lib_bare_exports(js_env_t *env, js_value_t *exports) {
   set_fn(env, exports, "validateConsignmentOffchain", fn_validate_consignment_offchain);
 
   // VSS backup (v0.3.0-beta.15)
+#ifdef HAS_VSS
   set_fn(env, exports, "newVssBackupClient", fn_new_vss_backup_client);
   set_fn(env, exports, "configureVssBackup", fn_configure_vss_backup);
   set_fn(env, exports, "disableVssAutoBackup", fn_disable_vss_auto_backup);
@@ -923,12 +954,15 @@ rgb_lib_bare_exports(js_env_t *env, js_value_t *exports) {
   set_fn(env, exports, "vssBackupClientEncryptionEnabled", fn_vss_backup_client_encryption_enabled);
   set_fn(env, exports, "vssDeleteBackup", fn_vss_delete_backup);
   set_fn(env, exports, "restoreFromVss", fn_restore_from_vss);
+#endif
 
   // Free (explicit drop)
   set_fn(env, exports, "freeWallet", fn_free_wallet);
   set_fn(env, exports, "freeOnline", fn_free_online);
   set_fn(env, exports, "freeInvoice", fn_free_invoice);
+#ifdef HAS_VSS
   set_fn(env, exports, "freeVssBackupClient", fn_free_vss_backup_client);
+#endif
 
   return exports;
 }

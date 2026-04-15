@@ -265,6 +265,17 @@ class Wallet {
       toFFIString(feeRate), !!skipSync))
   }
 
+  sendBtcBegin (online, address, amount, feeRate, skipSync) {
+    const onlineHandle = online instanceof Online ? online._handle : online
+    return binding.sendBtcBegin(this._handle, onlineHandle, address, toFFIString(amount),
+      toFFIString(feeRate), !!skipSync)
+  }
+
+  sendBtcEnd (online, signedPsbt, skipSync) {
+    const onlineHandle = online instanceof Online ? online._handle : online
+    return parseResult(binding.sendBtcEnd(this._handle, onlineHandle, signedPsbt, !!skipSync))
+  }
+
   blindReceive (assetIdOpt, assignment, durationSecondsOpt, transportEndpoints, minConfirmations) {
     return parseResult(binding.blindReceive(this._handle, assetIdOpt || null, toFFIString(assignment),
       toFFIString(durationSecondsOpt), toFFIString(transportEndpoints), toFFIString(minConfirmations)))
