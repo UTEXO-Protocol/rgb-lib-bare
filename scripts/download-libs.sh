@@ -5,7 +5,7 @@ set -euo pipefail
 # from GitHub Releases. Runs automatically via npm postinstall.
 
 REPO="UTEXO-Protocol/rgb-lib-bare"
-VERSION="v0.3.0-beta.15"
+VERSION="v0.3.0-beta.16"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PKG_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
