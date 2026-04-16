@@ -324,6 +324,27 @@ class Wallet {
       toFFIString(feeRate), toFFIString(minConfirmations)))
   }
 
+  inflateBegin (online, assetId, inflationAmounts, feeRate, minConfirmations, dryRun) {
+    const onlineHandle = online instanceof Online ? online._handle : online
+    return parseResult(binding.inflateBegin(this._handle, onlineHandle, assetId, toFFIString(inflationAmounts),
+      toFFIString(feeRate), toFFIString(minConfirmations), !!dryRun))
+  }
+
+  inflateEnd (online, signedPsbt) {
+    const onlineHandle = online instanceof Online ? online._handle : online
+    return parseResult(binding.inflateEnd(this._handle, onlineHandle, signedPsbt))
+  }
+
+  drainToBegin (online, address, destroyAssets, feeRate) {
+    const onlineHandle = online instanceof Online ? online._handle : online
+    return binding.drainToBegin(this._handle, onlineHandle, address, !!destroyAssets, toFFIString(feeRate))
+  }
+
+  drainToEnd (online, signedPsbt) {
+    const onlineHandle = online instanceof Online ? online._handle : online
+    return parseResult(binding.drainToEnd(this._handle, onlineHandle, signedPsbt))
+  }
+
   signPsbt (unsignedPsbt) {
     return binding.signPsbt(this._handle, unsignedPsbt)  // returns raw PSBT string, no parse
   }

@@ -581,6 +581,56 @@ static js_value_t *fn_inflate(js_env_t *env, js_callback_info_t *info) {
   return handle_result_string(env, res);
 }
 
+static js_value_t *fn_inflate_begin(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[7];
+  get_args(env, info, args, 7);
+  const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
+  const struct COpaqueStruct *online = unwrap_opaque(env, args[1]);
+  char *asset_id = js_to_cstring(env, args[2]);
+  char *amounts = js_to_cstring(env, args[3]);
+  char *fee_rate = js_to_cstring(env, args[4]);
+  char *min_conf = js_to_cstring(env, args[5]);
+  bool dry_run = js_to_bool(env, args[6]);
+  struct CResultString res = rgblib_inflate_begin(wallet, online, asset_id, amounts, fee_rate, min_conf, dry_run);
+  free(asset_id); free(amounts); free(fee_rate); free(min_conf);
+  return handle_result_string(env, res);
+}
+
+static js_value_t *fn_inflate_end(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[3];
+  get_args(env, info, args, 3);
+  const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
+  const struct COpaqueStruct *online = unwrap_opaque(env, args[1]);
+  char *signed_psbt = js_to_cstring(env, args[2]);
+  struct CResultString res = rgblib_inflate_end(wallet, online, signed_psbt);
+  free(signed_psbt);
+  return handle_result_string(env, res);
+}
+
+static js_value_t *fn_drain_to_begin(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[5];
+  get_args(env, info, args, 5);
+  const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
+  const struct COpaqueStruct *online = unwrap_opaque(env, args[1]);
+  char *address = js_to_cstring(env, args[2]);
+  bool destroy_assets = js_to_bool(env, args[3]);
+  char *fee_rate = js_to_cstring(env, args[4]);
+  struct CResultString res = rgblib_drain_to_begin(wallet, online, address, destroy_assets, fee_rate);
+  free(address); free(fee_rate);
+  return handle_result_string(env, res);
+}
+
+static js_value_t *fn_drain_to_end(js_env_t *env, js_callback_info_t *info) {
+  js_value_t *args[3];
+  get_args(env, info, args, 3);
+  const struct COpaqueStruct *wallet = unwrap_opaque(env, args[0]);
+  const struct COpaqueStruct *online = unwrap_opaque(env, args[1]);
+  char *signed_psbt = js_to_cstring(env, args[2]);
+  struct CResultString res = rgblib_drain_to_end(wallet, online, signed_psbt);
+  free(signed_psbt);
+  return handle_result_string(env, res);
+}
+
 // ============================================================================
 // Group 7: PSBT operations
 // ============================================================================
@@ -922,6 +972,10 @@ rgb_lib_bare_exports(js_env_t *env, js_value_t *exports) {
   set_fn(env, exports, "issueAssetIfa", fn_issue_asset_ifa);
   set_fn(env, exports, "issueAssetUda", fn_issue_asset_uda);
   set_fn(env, exports, "inflate", fn_inflate);
+  set_fn(env, exports, "inflateBegin", fn_inflate_begin);
+  set_fn(env, exports, "inflateEnd", fn_inflate_end);
+  set_fn(env, exports, "drainToBegin", fn_drain_to_begin);
+  set_fn(env, exports, "drainToEnd", fn_drain_to_end);
 
   // PSBT
   set_fn(env, exports, "signPsbt", fn_sign_psbt);

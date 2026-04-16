@@ -76,6 +76,16 @@ struct CResultString rgblib_delete_transfers(const struct COpaqueStruct *wallet,
 
 struct CResultString rgblib_disable_vss_auto_backup(const struct COpaqueStruct *wallet);
 
+struct CResultString rgblib_drain_to_begin(const struct COpaqueStruct *wallet,
+                                           const struct COpaqueStruct *online,
+                                           const char *address,
+                                           bool destroy_assets,
+                                           const char *fee_rate);
+
+struct CResultString rgblib_drain_to_end(const struct COpaqueStruct *wallet,
+                                         const struct COpaqueStruct *online,
+                                         const char *signed_psbt);
+
 struct CResultString rgblib_fail_transfers(const struct COpaqueStruct *wallet,
                                            const struct COpaqueStruct *online,
                                            const char *batch_transfer_idx_opt,
@@ -113,6 +123,18 @@ struct CResultString rgblib_inflate(const struct COpaqueStruct *wallet,
                                     const char *inflation_amounts,
                                     const char *fee_rate,
                                     const char *min_confirmations);
+
+struct CResultString rgblib_inflate_begin(const struct COpaqueStruct *wallet,
+                                          const struct COpaqueStruct *online,
+                                          const char *asset_id,
+                                          const char *inflation_amounts,
+                                          const char *fee_rate,
+                                          const char *min_confirmations,
+                                          bool dry_run);
+
+struct CResultString rgblib_inflate_end(const struct COpaqueStruct *wallet,
+                                        const struct COpaqueStruct *online,
+                                        const char *signed_psbt);
 
 struct CResultString rgblib_invoice_data(const struct COpaqueStruct *invoice);
 
