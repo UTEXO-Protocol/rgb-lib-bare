@@ -93,6 +93,9 @@ jobs:
           toolchain: stable
           target: ${{ matrix.target }}
 
+      - name: Configure git credentials for cargo fetches
+        run: git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
+
       - name: Install bindgen-cli (needed for aws-lc-sys on non-arm64 Android)
         if: matrix.os == 'android'
         run: cargo install --force bindgen-cli --version 0.72.1
@@ -125,13 +128,22 @@ jobs:
         run: |
           cd rgb-lib/bindings/c-ffi
           TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64"
-          TARGET_UPPER=$(echo ${{ matrix.target }} | tr 'a-z-' 'A-Z_')
+          export PATH="$TOOLCHAIN/bin:$PATH"
 
+          # Create target-prefixed symlinks so openssl-sys can find NDK tools
+          TARGET="${{ matrix.target }}"
+          for tool in ranlib ar nm strip objcopy objdump readelf; do
+            ln -sf "$TOOLCHAIN/bin/llvm-$tool" "$TOOLCHAIN/bin/${TARGET}-$tool"
+          done
+
+          TARGET_UPPER=$(echo $TARGET | tr 'a-z-' 'A-Z_')
           export CARGO_TARGET_${TARGET_UPPER}_LINKER="$TOOLCHAIN/bin/${{ matrix.ndk_linker }}"
-          TARGET_UNDERSCORE=$(echo ${{ matrix.target }} | tr '-' '_')
+
+          TARGET_UNDERSCORE=$(echo $TARGET | tr '-' '_')
           export CC_${TARGET_UNDERSCORE}="$TOOLCHAIN/bin/${{ matrix.ndk_linker }}"
           export CXX_${TARGET_UNDERSCORE}="$TOOLCHAIN/bin/${{ matrix.ndk_linker }}++"
           export AR_${TARGET_UNDERSCORE}="$TOOLCHAIN/bin/llvm-ar"
+          export RANLIB_${TARGET_UNDERSCORE}="$TOOLCHAIN/bin/llvm-ranlib"
 
           # bindgen needs the Android sysroot for non-arm64 targets
           export BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$TOOLCHAIN/sysroot -target ${{ matrix.target }}24"
