@@ -305,7 +305,7 @@ jobs:
           gh release create "$VERSION" \
             --title "Release $VERSION" \
             --notes "Automated release for rgb-lib $VERSION. Contains librgblibcffi.a and .bare prebuilds for iOS (arm64, arm64-sim, x64-sim), macOS (arm64), and Android (arm64, arm, x64, ia32)." \
-            --prerelease || echo "Release may already exist, updating assets..."
+            --prerelease --latest || echo "Release may already exist, updating assets..."
           gh release upload "$VERSION" release-assets/* --clobber
 
       - name: Setup Node.js for npm publish
