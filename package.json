@@ -4,6 +4,12 @@
   "description": "Bare native addon wrapping rgb-lib C FFI for use in bare worklets",
   "main": "index.js",
   "addon": true,
+  "license": "MIT",
+  "author": "UTEXO",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/UTEXO-Protocol/rgb-lib-bare.git"
+  },
   "files": [
     "binding.js",
     "binding.cc",
